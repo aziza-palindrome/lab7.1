@@ -1,0 +1,71 @@
+import telebot
+import random
+from datetime import datetime
+import psycopg2
+import os
+
+conn = psycopg2.connect(
+  host = 'localhost',
+  database = 'pp2',
+  password = 'ImPoSSiBlE567'
+)
+
+cur = conn.cursor()
+
+bot = telebot.TeleBot("6688750036:AAHoVvW-ZjhlVgFycM8_E8LY7rBRcsmZ568")
+
+def log(message, reply):
+   print(f'{datetime.now()} {message.from_user.first_name} wrote me: {message.text} | bot replied: {reply}')
+
+def findUserByEmail(email):
+  select_query = f"select * from users where email = '{email}';"
+  cur.execute(select_query)
+  return cur.fetchone()
+
+def createNewUser(name, email):
+  insert_query = f"insert into users (name, email) values ('{name}', '{email}');"
+  cur.execute(insert_query)
+  conn.commit()
+
+@bot.message_handler(commands=['start'])
+def start_message(message):
+  reply = 'Hey, let \'s start'
+  log(message, reply)
+  bot.send_message(message.chat.id, reply)
+
+@bot.message_handler(commands=['random'])
+def random_number(message):
+  random_num = random.randint(0, 100)
+  log(message, random_num)
+  bot.send_message(message.chat.id, random_num)
+
+@bot.message_handler(commands=['register'])
+def register(message):
+  args = message.text.split()
+  if len(args) != 2:
+    reply = 'Invalid number of arguments, use /register email'
+    log(message, reply)
+    bot.reply_to(message, reply)
+    return
+  
+  email = args[1]
+  user = findUserByEmail(email)
+  if user is not None:
+    reply = f'User with email {email} already exists'
+    log(message, reply)
+    bot.reply_to(message, reply)
+    return
+  else:
+    createNewUser(message.from_user.first_name, email)
+    reply = f'User with email {email} successfully created! ✅'
+    log(message, reply)
+    bot.send_message(message.chat.id, reply)
+
+
+@bot.message_handler(func=lambda m: True)
+def echo_all(message):
+  bot.reply_to(message, "Sorry?")
+
+if name == 'main':
+  print("Bot started")
+  bot.polling()
